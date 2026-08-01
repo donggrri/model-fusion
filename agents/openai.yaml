@@ -1,4 +1,4 @@
 interface:
   display_name: "Model Fusion"
-  short_description: "Codex, AGY, Cursor의 의견을 종합해 최종 결정"
-  default_prompt: "Use $model-fusion to analyze this task with Codex, AGY, and Cursor, then make the final evidence-based decision."
+  short_description: "Fuse the agents available in this environment"
+  default_prompt: "Use $model-fusion to gather opinions from the agents available in this environment, then make the final evidence-based decision."

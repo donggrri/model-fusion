@@ -136,14 +136,16 @@ Use this Markdown structure:
 [One direct decision and why it wins.]
 
 - 신뢰도: 높음 | 중간 | 낮음
-- 참여: Codex / AGY / Cursor 중 completed reviewers
+- 참여: Codex / availability config에 따라 실제 완료된 reviewer 목록
 - 다음 행동: [One concrete first action]
 
 ## 합의와 차이
 
-| 쟁점 | Codex | AGY | Cursor | Codex 판정 |
-|---|---|---|---|---|
-| ... | ... | ... | ... | ... |
+| 쟁점 | Codex baseline | Completed reviewer evidence (one column per completed reviewer) | Codex 판정 |
+|---|---|---|---|
+| ... | ... | ... | ... |
+
+Reviewer 열은 active environment에서 `available: true`이고 실제 완료된 agent에 맞춰 동적으로 추가한다. 비활성·미설치·인증 실패 reviewer를 열로 만들거나 완료된 것처럼 표시하지 않는다.
 
 ## 확인된 근거
 
@@ -174,7 +176,7 @@ Omit an empty section, but never omit `최종 결정`, `합의와 차이`, `확�
 
 ## 6. Confidence calibration
 
-- **높음**: the decisive claims are reproduced or directly verified, at least two reviewers independently converge, and no unresolved high-impact contradiction remains.
+- **높음**: the decisive claims are reproduced or directly verified, at least two completed participants independently converge when the active environment provides them, and no unresolved high-impact contradiction remains.
 - **중간**: evidence supports the choice but some assumptions, incomplete coverage, or non-decisive disagreement remains.
 - **낮음**: a reviewer is unavailable, decisive claims are mostly inferred, or a high-impact disagreement cannot be verified.
 

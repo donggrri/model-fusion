@@ -1,0 +1,47 @@
+schema_version: 1
+active_environment: "windows-cursor"
+
+environments:
+  windows-cursor:
+    description: "Windows Codex environment with Cursor Agent available"
+    agents:
+      cursor:
+        available: true
+        capabilities:
+          - review
+          - advisor
+          - delegate
+        model: "cursor-grok-4.5-high"
+        preflight:
+          status:
+            - "cursor-agent.cmd"
+            - "status"
+          login:
+            - "cursor-agent.cmd"
+            - "login"
+        review:
+          command: "cursor-agent.cmd"
+          args:
+            - "-p"
+            - "--mode=plan"
+            - "--sandbox"
+            - "enabled"
+            - "--model"
+            - "{model}"
+            - "--output-format"
+            - "text"
+            - "--workspace"
+            - "{workspace}"
+            - "{prompt}"
+        advisor:
+          command: "cursor-grok-advisor.cmd"
+        delegate:
+          command: "cursor-grok-delegate.cmd"
+
+      agy:
+        available: false
+        capabilities:
+          - review
+        reason: "AGY is not installed or authenticated in this environment."
+        review:
+          command: "agy"

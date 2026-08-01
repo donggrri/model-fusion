@@ -12,9 +12,15 @@ Act as the orchestrator. Codex owns the user conversation and must construct a t
 - **Advisor**: Use `cursor-grok-advisor.cmd` for read-only analysis of plans, designs, bug diagnoses, security concerns, or other technical decisions.
 - **Delegate**: Use `cursor-grok-delegate.cmd` only when the user explicitly asks Grok to implement, edit, refactor, or test code. This mode can modify the current workspace.
 
+## Resolve the advisor agent
+
+Read `AGENTS.md` and the shared [agent availability config](../agents/availability.yaml) before invoking an agent. Resolve the environment from an explicit choice, then `MODEL_FUSION_ENV`, then `active_environment`. Select only an agent marked `available: true` with the `advisor` capability. The checked-in `windows-cursor` environment selects Cursor and its configured `advisor.command`; it does not assume that AGY or another CLI exists.
+
+Use the selected agent's configured `preflight.status` command before calling it. If authentication is required, stop and ask the user to run the configured `preflight.login` command in the same execution context. If no eligible advisor or command is available, report the exact reason and do not silently substitute another model.
+
 ## Windows execution and authentication
 
-On Windows, always use `cursor-agent.cmd` and the `cursor-grok-*.cmd` wrappers. Do not invoke the `.ps1` script directly. The `.cmd` wrapper applies the execution-policy bypass only to the CLI process, so do not change the user's PowerShell execution policy globally.
+For the current Windows Cursor entry, always use `cursor-agent.cmd` and the configured `cursor-grok-*.cmd` wrappers. Do not invoke the `.ps1` script directly. The `.cmd` wrapper applies the execution-policy bypass only to the CLI process, so do not change the user's PowerShell execution policy globally. If another environment selects a different agent, follow that agent's configured commands instead of assuming Cursor.
 
 Before either request, verify authentication in the same Codex execution context:
 

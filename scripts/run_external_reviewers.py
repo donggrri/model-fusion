@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run AGY and Cursor Agent concurrently with the exact same read-only prompt."""
+"""Run configured read-only reviewers concurrently with one shared prompt."""
 
 from __future__ import annotations
 
@@ -17,18 +17,29 @@ from typing import Any
 
 
 MAX_PROMPT_BYTES = 120_000
+DEFAULT_AGENT_CONFIG = Path(__file__).resolve().parents[1] / "agents" / "availability.yaml"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Collect read-only AGY and Cursor opinions for Codex synthesis."
+        description="Collect read-only opinions from reviewers available in the active environment."
     )
     parser.add_argument("--prompt-file", required=True, type=Path)
     parser.add_argument("--workspace", default=Path.cwd(), type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--timeout-seconds", default=300, type=int)
-    parser.add_argument("--agy-bin", default="agy")
-    parser.add_argument("--cursor-bin", default="cursor-agent")
+    parser.add_argument(
+        "--agent-config",
+        default=DEFAULT_AGENT_CONFIG,
+        type=Path,
+        help="Environment/agent availability YAML (default: repository agents/availability.yaml).",
+    )
+    parser.add_argument(
+        "--environment",
+        help="Override the active environment; otherwise MODEL_FUSION_ENV or the config default is used.",
+    )
+    parser.add_argument("--agy-bin", help="Override the configured AGY reviewer command.")
+    parser.add_argument("--cursor-bin", help="Override the configured Cursor reviewer command.")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -105,6 +116,157 @@ def schema_warnings(value: Any) -> list[str]:
         if key in value and not isinstance(value[key], list):
             warnings.append(f"{key} must be an array")
     return warnings
+
+
+class AgentConfigError(ValueError):
+    """Raised when the environment/agent availability config is invalid."""
+
+
+def load_agent_config(config_path: Path) -> dict[str, Any]:
+    try:
+        import yaml
+    except ModuleNotFoundError as exc:
+        raise AgentConfigError(
+            "PyYAML is required to read agent availability config. "
+            "Install it with: python -m pip install PyYAML"
+        ) from exc
+
+    path = config_path.resolve()
+    if not path.is_file():
+        raise AgentConfigError(f"Agent availability config not found: {path}")
+    try:
+        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise AgentConfigError(f"Could not parse agent availability config {path}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise AgentConfigError("Agent availability config must contain a YAML object")
+    if value.get("schema_version") != 1:
+        raise AgentConfigError("Unsupported or missing agent availability schema_version; expected 1")
+    return value
+
+
+def select_environment(
+    config: dict[str, Any], requested_environment: str | None
+) -> tuple[str, dict[str, Any]]:
+    environments = config.get("environments")
+    if not isinstance(environments, dict):
+        raise AgentConfigError("Agent availability config must define an environments mapping")
+
+    environment_name = (
+        requested_environment
+        or os.environ.get("MODEL_FUSION_ENV")
+        or config.get("active_environment")
+    )
+    if not isinstance(environment_name, str) or not environment_name:
+        raise AgentConfigError(
+            "No active environment configured; set active_environment or MODEL_FUSION_ENV"
+        )
+
+    environment = environments.get(environment_name)
+    if not isinstance(environment, dict):
+        available = ", ".join(sorted(str(name) for name in environments))
+        raise AgentConfigError(
+            f"Unknown environment {environment_name!r}; available environments: {available}"
+        )
+    return environment_name, environment
+
+
+def resolve_command(command: str) -> str | None:
+    expanded = os.path.expandvars(os.path.expanduser(command))
+    candidate = Path(expanded)
+    if candidate.is_absolute():
+        return str(candidate) if candidate.is_file() else None
+    return shutil.which(expanded)
+
+
+def build_reviewer_plan(
+    environment: dict[str, Any],
+    workspace: Path,
+    prompt: str,
+    timeout_seconds: int,
+    command_overrides: dict[str, str | None],
+) -> tuple[dict[str, dict[str, Any]], dict[str, list[str]]]:
+    agents = environment.get("agents")
+    if not isinstance(agents, dict):
+        raise AgentConfigError("Active environment must define an agents mapping")
+
+    states: dict[str, dict[str, Any]] = {}
+    commands: dict[str, list[str]] = {}
+    for name, raw_spec in agents.items():
+        if not isinstance(name, str) or not isinstance(raw_spec, dict):
+            raise AgentConfigError("Each agent entry must have a name and mapping")
+
+        capabilities = raw_spec.get("capabilities", [])
+        if not isinstance(capabilities, list) or not all(
+            isinstance(capability, str) for capability in capabilities
+        ):
+            raise AgentConfigError(f"Agent {name!r} capabilities must be a list of strings")
+
+        base_state: dict[str, Any] = {
+            "configured": True,
+            "capabilities": capabilities,
+            "model": raw_spec.get("model"),
+        }
+        if "review" not in capabilities:
+            states[name] = {
+                **base_state,
+                "status": "not_selected",
+                "reason": "agent does not advertise review capability",
+            }
+            continue
+        if raw_spec.get("available") is not True:
+            states[name] = {
+                **base_state,
+                "status": "disabled",
+                "reason": raw_spec.get("reason", "agent is disabled for this environment"),
+            }
+            continue
+
+        review = raw_spec.get("review")
+        if not isinstance(review, dict):
+            raise AgentConfigError(f"Available reviewer {name!r} must define a review mapping")
+        configured_command = review.get("command")
+        if not isinstance(configured_command, str) or not configured_command:
+            raise AgentConfigError(f"Available reviewer {name!r} must define review.command")
+        command = command_overrides.get(name) or configured_command
+        resolved = resolve_command(command)
+        state = {**base_state, "command": command, "path": resolved}
+        if resolved is None:
+            states[name] = {
+                **state,
+                "status": "unavailable",
+                "reason": f"command was not found: {command}",
+            }
+            continue
+
+        raw_args = review.get("args")
+        if not isinstance(raw_args, list) or not all(
+            isinstance(argument, str) for argument in raw_args
+        ):
+            raise AgentConfigError(
+                f"Available reviewer {name!r} must define review.args as a list of strings"
+            )
+        if not any("{prompt}" in argument for argument in raw_args):
+            raise AgentConfigError(
+                f"Available reviewer {name!r} review.args must include the {{prompt}} placeholder"
+            )
+
+        replacements = {
+            "{workspace}": str(workspace),
+            "{prompt}": prompt,
+            "{timeout}": str(timeout_seconds),
+            "{model}": str(raw_spec.get("model", "")),
+        }
+        rendered_args: list[str] = []
+        for raw_argument in raw_args:
+            rendered = raw_argument
+            for token, replacement in replacements.items():
+                rendered = rendered.replace(token, replacement)
+            rendered_args.append(rendered)
+        states[name] = {**state, "status": "ready"}
+        commands[name] = [resolved, *rendered_args]
+
+    return states, commands
 
 
 def git_state(workspace: Path) -> str | None:
@@ -206,10 +368,22 @@ def main() -> int:
         print(f"Prompt must be UTF-8: {exc}", file=sys.stderr)
         return 2
 
-    resolved = {
-        "agy": shutil.which(args.agy_bin),
-        "cursor": shutil.which(args.cursor_bin),
-    }
+    try:
+        agent_config = load_agent_config(args.agent_config)
+        environment_name, environment = select_environment(
+            agent_config, args.environment
+        )
+        reviewer_states, commands = build_reviewer_plan(
+            environment,
+            workspace,
+            prompt,
+            args.timeout_seconds,
+            {"agy": args.agy_bin, "cursor": args.cursor_bin},
+        )
+    except AgentConfigError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
     prompt_sha256 = hashlib.sha256(prompt_bytes).hexdigest()
 
     if args.dry_run:
@@ -219,54 +393,28 @@ def main() -> int:
                     "prompt_sha256": prompt_sha256,
                     "prompt_bytes": len(prompt_bytes),
                     "workspace": str(workspace),
-                    "reviewers": {
-                        key: {"available": value is not None, "path": value}
-                        for key, value in resolved.items()
-                    },
+                    "agent_config": str(args.agent_config.resolve()),
+                    "environment": environment_name,
+                    "reviewers": reviewer_states,
                 },
                 ensure_ascii=False,
                 indent=2,
             )
         )
-        return 0 if all(resolved.values()) else 1
-
-    commands: dict[str, list[str]] = {}
-    if resolved["agy"]:
-        commands["agy"] = [
-            resolved["agy"],
-            "--print",
-            "--mode=plan",
-            "--sandbox",
-            "--print-timeout",
-            f"{args.timeout_seconds}s",
-            prompt,
-        ]
-    if resolved["cursor"]:
-        commands["cursor"] = [
-            resolved["cursor"],
-            "-p",
-            "--mode=plan",
-            "--sandbox",
-            "enabled",
-            "--output-format",
-            "text",
-            "--workspace",
-            str(workspace),
-            prompt,
-        ]
+        return 0 if commands else 1
 
     before_state = git_state(workspace)
     env = os.environ.copy()
     env["AGY_CLI_DISABLE_AUTO_UPDATE"] = "true"
-    reviewers: dict[str, Any] = {}
-    missing = [name for name, path in resolved.items() if path is None]
-    for name in missing:
-        reviewers[name] = {
-            "status": "unavailable",
-            "error": f"{name} CLI was not found on PATH",
-        }
+    reviewers: dict[str, Any] = {
+        name: state
+        for name, state in reviewer_states.items()
+        if state.get("status") != "ready"
+    }
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=max(1, min(8, len(commands)))
+    ) as executor:
         future_map = {
             executor.submit(
                 invoke,
@@ -279,7 +427,8 @@ def main() -> int:
             for name, command in commands.items()
         }
         for future in concurrent.futures.as_completed(future_map):
-            reviewers[future_map[future]] = future.result()
+            name = future_map[future]
+            reviewers[name] = {**reviewer_states[name], **future.result()}
 
     after_state = git_state(workspace)
     workspace_changed = (
@@ -292,6 +441,8 @@ def main() -> int:
         "prompt_sha256": prompt_sha256,
         "prompt_bytes": len(prompt_bytes),
         "workspace": str(workspace),
+        "agent_config": str(args.agent_config.resolve()),
+        "environment": environment_name,
         "workspace_changed_during_review": workspace_changed,
         "reviewers": reviewers,
     }
