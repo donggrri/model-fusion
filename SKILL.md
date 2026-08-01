@@ -85,3 +85,7 @@ Produce the final synthesis using the required Markdown format in the reference.
 - Invalid JSON response: use the preserved raw response and normalize it manually.
 - Timeout: retain completed responses and note the missing reviewer.
 - Sensitive repository: omit secrets, credentials, personal data, and unrelated proprietary content from the prompt. External reviewers send context to their configured providers.
+
+## Related skills
+
+- [Grok Advisor](grok-advisor/SKILL.md): Get a read-only second opinion from Grok or explicitly delegate an authorized implementation task.
