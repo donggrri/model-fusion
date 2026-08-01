@@ -1,0 +1,7 @@
+interface:
+  display_name: "Delegate"
+  short_description: "Apply repo skills and delegate coding"
+  default_prompt: "Use $delegate to select relevant repository skills and delegate this implementation task to Cursor Agent."
+
+policy:
+  allow_implicit_invocation: false

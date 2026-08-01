@@ -12,6 +12,33 @@ Act as the orchestrator. Codex owns the user conversation and must construct a t
 - **Advisor**: Use `cursor-grok-advisor.cmd` for read-only analysis of plans, designs, bug diagnoses, security concerns, or other technical decisions.
 - **Delegate**: Use `cursor-grok-delegate.cmd` only when the user explicitly asks Grok to implement, edit, refactor, or test code. This mode can modify the current workspace.
 
+## Windows execution and authentication
+
+On Windows, always use `cursor-agent.cmd` and the `cursor-grok-*.cmd` wrappers. Do not invoke the `.ps1` script directly. The `.cmd` wrapper applies the execution-policy bypass only to the CLI process, so do not change the user's PowerShell execution policy globally.
+
+Before either request, verify authentication in the same Codex execution context:
+
+```powershell
+cursor-agent.cmd status
+```
+
+If authentication is required, stop and ask the user to run this command in the same context:
+
+```powershell
+cursor-agent.cmd login
+```
+
+After login, re-run `cursor-agent.cmd status` before retrying the advisor or delegate request. Do not invent or set `CURSOR_API_KEY`; Cursor login state can differ across Codex tasks, terminals, Windows users, and execution hosts.
+
+The wrappers are installed in the user's global Cursor Agent directory (`%LOCALAPPDATA%\cursor-agent`) and are intended to work from any workspace. If PATH lookup is unavailable, call the wrapper by its full path:
+
+```powershell
+& "$env:LOCALAPPDATA\cursor-agent\cursor-grok-advisor.cmd" "<Codex-generated consultation brief>"
+& "$env:LOCALAPPDATA\cursor-agent\cursor-grok-delegate.cmd" "<Codex-generated implementation brief>"
+```
+
+The wrappers run Cursor's `cursor-grok-4.5-high` model in headless mode. Advisor uses `--mode ask` and is read-only; delegate uses `--force` only for explicitly authorized implementation work.
+
 ## Build the Grok prompt
 
 Before invoking either wrapper, inspect the relevant workspace context yourself and compose a concise prompt containing:

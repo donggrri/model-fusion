@@ -89,3 +89,4 @@ Produce the final synthesis using the required Markdown format in the reference.
 ## Related skills
 
 - [Grok Advisor](grok-advisor/SKILL.md): Get a read-only second opinion from Grok or explicitly delegate an authorized implementation task.
+- [Delegate](delegate/SKILL.md): Select relevant repository skills and delegate explicitly authorized implementation work to Cursor Agent.

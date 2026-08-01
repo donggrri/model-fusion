@@ -1,0 +1,7 @@
+interface:
+  display_name: "Grok Advisor"
+  short_description: "Ask Grok 4.5 for advice or delegate coding"
+  default_prompt: "Use $grok-advisor for a read-only Grok 4.5 review or an explicitly authorized coding delegation."
+
+policy:
+  allow_implicit_invocation: false
