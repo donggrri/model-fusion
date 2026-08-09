@@ -20,6 +20,8 @@ Act as the orchestration layer for implementation delegation. Codex owns the con
 
 Before composing the delegation brief, inspect the absolute current workspace, `AGENTS.md`, repository instructions, relevant files, current behavior, errors, tests, and the working-tree status. Preserve user changes and do not reset or discard them.
 
+If `AGENTS.md`, `agents/availability.yaml`, or the Python/YAML preflight is missing or unresolved, run `$setup` or `scripts/setup_environment.py` first and fix the reported setup issue before selecting a delegate.
+
 Discover repository skills with:
 
 ```powershell

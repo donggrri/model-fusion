@@ -1,0 +1,4 @@
+interface:
+  display_name: "Setup"
+  short_description: "Validate repository and agent setup"
+  default_prompt: "Use $setup to validate this repository, its instructions, dependencies, and available agents."

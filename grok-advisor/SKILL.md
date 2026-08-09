@@ -45,6 +45,30 @@ The wrappers are installed in the user's global Cursor Agent directory (`%LOCALA
 
 The wrappers run Cursor's `cursor-grok-4.5-high` model in headless mode. Advisor uses `--mode ask` and is read-only; delegate uses `--force` only for explicitly authorized implementation work.
 
+## Direct wrapper invocation
+
+PowerShell syntax such as the following is valid:
+
+```powershell
+& cursor-grok-advisor.cmd '역할: 독립 자문가로 행동하라...'
+```
+
+However, a direct wrapper call bypasses `$setup` and this skill's preflight. The wrapper forwards the prompt to `cursor-agent.cmd`; it does not authenticate automatically. Run the status check in the same chat, terminal, Windows user, and execution host that will run the wrapper:
+
+```powershell
+Get-Command cursor-agent.cmd
+cursor-agent.cmd status
+```
+
+If status reports that authentication is required, stop and run:
+
+```powershell
+cursor-agent.cmd login
+cursor-agent.cmd status
+```
+
+Then retry the wrapper. Do not set an arbitrary `CURSOR_API_KEY` as a workaround. If `status` succeeds but the advisor still reports authentication failure, compare command resolution and execution context; the other chat may be using a different terminal, Windows user, host, or stale skill instructions. Prefer invoking `$grok-advisor` or running `$setup` first so the configured environment and preflight are applied.
+
 ## Build the Grok prompt
 
 Before invoking either wrapper, inspect the relevant workspace context yourself and compose a concise prompt containing:

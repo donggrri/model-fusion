@@ -30,6 +30,8 @@ Use `agents/availability.yaml` in this skill repository as the source of truth. 
 
 For the checked-in `windows-cursor` environment, Cursor is enabled for `review`, `advisor`, and `delegate`; AGY is disabled. Do not invoke AGY merely because the fusion workflow commonly supports it. If a configured command is missing, authentication fails, or no reviewer is available, preserve that status and continue with the Codex baseline and any remaining reviewers.
 
+After a fresh clone or environment change, run `$setup` or `scripts/setup_environment.py` before creating a fusion run. Do not proceed on a failed setup report without resolving the relevant configuration or dependency issue.
+
 ## Workflow
 
 ### 1. Select the mode
@@ -102,3 +104,4 @@ Produce the final synthesis using the required Markdown format in the reference.
 
 - [Grok Advisor](grok-advisor/SKILL.md): Get a read-only second opinion from Grok or explicitly delegate an authorized implementation task.
 - [Delegate](delegate/SKILL.md): Select relevant repository skills and delegate explicitly authorized implementation work to Cursor Agent.
+- [Setup](setup/SKILL.md): Validate repository instructions, dependencies, environment configuration, and available agent commands after cloning.

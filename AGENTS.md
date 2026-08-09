@@ -8,3 +8,4 @@
 - Every agent handoff must report findings, changed files, tests or checks run, failures, blockers, and remaining risks.
 - Inspect the working tree and diff after every delegated implementation. Preserve existing user changes and partial results from failed or timed-out agents.
 - Hermes is optional infrastructure, not an implicit dependency. Do not invoke or assume a Hermes runtime unless the active environment configuration explicitly provides one.
+- After cloning or changing the environment, run `python scripts/setup_environment.py` (or `$setup`) before delegating work. Use `--install-pyyaml` only when dependency installation is explicitly authorized.
