@@ -22,13 +22,14 @@ agy_available() { command_exists "${AGY_BIN}"; }
 require_linux() {
 	case "$(uname -s 2>/dev/null || true)" in
 		Linux*) ;;
-		*) die "This installer targets Linux/WSL. On Windows, copy pi-workflow/* into %USERPROFILE%\.pi\agent\extensions\pi-three-lane-workflow\\" ;;
+		*) die "This installer targets Linux/WSL. On Windows, run scripts\\install-pi-workflow.cmd" ;;
 	esac
 }
 
 usage() {
 	cat <<'USAGE'
 Install the Pi three-lane workflow extension for Linux/WSL.
+On Windows, use scripts/install-pi-workflow.cmd instead.
 
 Usage:
   scripts/install_pi_workflow.sh [options]
