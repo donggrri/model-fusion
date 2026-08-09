@@ -105,14 +105,17 @@ interface WorkflowRequest {
 	signal?: AbortSignal;
 }
 
-const AGENT_DIR = join(homedir(), ".pi", "agent");
+const AGENT_DIR = process.env.PI_CODING_AGENT_DIR?.trim() || join(homedir(), ".pi", "agent");
 const RUNS_DIR = join(AGENT_DIR, "runs");
-const DEFAULT_AGY_BIN = join(
-	process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"),
-	"agy",
-	"bin",
-	"agy.exe",
-);
+const DEFAULT_AGY_BIN =
+	process.platform === "win32"
+		? join(
+				process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"),
+				"agy",
+				"bin",
+				"agy.exe",
+			)
+		: "agy";
 
 /** Cap peer findings embedded into round-2 prompts. */
 const MAX_PEER_EMBED_CHARS = 12_000;
@@ -571,7 +574,7 @@ function notify(ctx: any, message: string, level: "info" | "warning" | "error" =
 }
 
 function setStatus(ctx: any, message: string): void {
-	if (ctx.hasUI) ctx.ui.setStatus("pi-three-lane-workflow", message);
+	if (ctx.hasUI) ctx.ui.setStatus("pi-workflow", message);
 }
 
 function parseFusionList(raw: string | undefined): string[] | undefined {
