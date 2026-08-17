@@ -11,7 +11,7 @@ environments:
           - review
           - advisor
           - delegate
-        model: "cursor-grok-4.5-high"
+        model: "cursor-grok-4.6-high"
         preflight:
           status:
             - "cursor-agent.cmd"
@@ -23,9 +23,9 @@ environments:
           command: "cursor-agent.cmd"
           args:
             - "-p"
-            - "--mode=plan"
+            - "--mode=ask"
             - "--sandbox"
-            - "enabled"
+            - "disabled"
             - "--model"
             - "{model}"
             - "--output-format"
@@ -37,6 +37,26 @@ environments:
           command: "cursor-grok-advisor.cmd"
         delegate:
           command: "cursor-grok-delegate.cmd"
+
+      codex-sol:
+        available: true
+        capabilities:
+          - review
+        model: "gpt-5.6-sol"
+        review:
+          command: "codex.exe"
+          args:
+            - "exec"
+            - "--config"
+            - "model_reasoning_effort=\"high\""
+            - "--model"
+            - "{model}"
+            - "--sandbox"
+            - "read-only"
+            - "--cd"
+            - "{workspace}"
+            - "--ephemeral"
+            - "{prompt}"
 
       agy:
         available: false

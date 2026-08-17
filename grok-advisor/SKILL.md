@@ -1,6 +1,6 @@
 ---
 name: grok-advisor
-description: Use Cursor's Grok 4.5 through the installed headless Cursor Agent CLI for read-only second opinions or explicitly delegated coding tasks. Use when the user invokes $grok-advisor, selects Grok Advisor from the slash menu, asks for an independent technical review, or explicitly asks Grok to implement a change.
+description: Use Cursor's Grok 4.6 through the installed headless Cursor Agent CLI for read-only second opinions or explicitly delegated coding tasks. Use when the user invokes $grok-advisor, selects Grok Advisor from the slash menu, asks for an independent technical review, or explicitly asks Grok to implement a change.
 ---
 
 # Grok Advisor
@@ -43,7 +43,7 @@ The wrappers are installed in the user's global Cursor Agent directory (`%LOCALA
 & "$env:LOCALAPPDATA\cursor-agent\cursor-grok-delegate.cmd" "<Codex-generated implementation brief>"
 ```
 
-The wrappers run Cursor's `cursor-grok-4.5-high` model in headless mode. Advisor uses `--mode ask` and is read-only; delegate uses `--force` only for explicitly authorized implementation work.
+The wrappers run Cursor's `cursor-grok-4.6-high` model in headless mode. Advisor uses `--mode ask` and is read-only; delegate uses `--force` only for explicitly authorized implementation work.
 
 ## Direct wrapper invocation
 

@@ -109,7 +109,7 @@ If PATH lookup is unavailable, use the globally installed wrapper:
 & "$env:LOCALAPPDATA\cursor-agent\cursor-grok-delegate.cmd" "<Codex-generated implementation brief>"
 ```
 
-The configured Cursor wrapper uses `cursor-grok-4.5-high` in headless mode with write authorization. Never add `--approve-mcps` automatically. Use `--workspace "<path>"` when the target workspace is not the current directory and the installed CLI supports that argument.
+The configured Cursor wrapper uses `cursor-grok-4.6-high` in headless mode with write authorization. Never add `--approve-mcps` automatically. Use `--workspace "<path>"` when the target workspace is not the current directory and the installed CLI supports that argument.
 
 ### 7. Independently verify the handoff
 
