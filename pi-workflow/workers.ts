@@ -89,17 +89,17 @@ export async function runAgy(cwd: string, task: string, signal?: AbortSignal): P
 	const binary = process.env.PI_AGY_BIN || DEFAULT_AGY_BIN;
 	const args = [
 		"--print",
+		task,
 		"--output-format",
 		"json",
 		"--mode",
 		"plan",
 		"--sandbox",
-		"--disable-slash-commands",
+		"--dangerously-skip-permissions",
 		"--print-timeout",
 		"120s",
-		"-p",
-		task,
 	];
+	const permissionNotice = "headless mode cannot prompt for";
 
 	return await new Promise((resolve, reject) => {
 		const child: ChildProcess = spawn(binary, args, {
@@ -164,6 +164,14 @@ export async function runAgy(cwd: string, task: string, signal?: AbortSignal): P
 				}
 				if (code !== 0) {
 					reject(new Error(`AGY exited with code ${code}: ${stderr.trim() || stdout.trim()}`));
+					return;
+				}
+				if (`${stdout}\n${stderr}`.toLowerCase().includes(permissionNotice)) {
+					reject(new Error("AGY headless execution was denied by its permission policy."));
+					return;
+				}
+				if (!stdout.trim() && !stderr.trim()) {
+					reject(new Error("AGY returned an empty headless result."));
 					return;
 				}
 				resolve({ provider: "agy", text: stdout.trim() || stderr.trim() });

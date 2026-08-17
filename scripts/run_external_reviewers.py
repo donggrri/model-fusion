@@ -15,9 +15,19 @@ import sys
 import time
 from typing import Any
 
+try:
+    from environment_selection import resolve_environment_name
+except ImportError:  # pragma: no cover - supports package-style imports in tests
+    from scripts.environment_selection import resolve_environment_name
+
 
 MAX_PROMPT_BYTES = 120_000
+WINDOWS_PROMPT_BYTES = 24_000
 DEFAULT_AGENT_CONFIG = Path(__file__).resolve().parents[1] / "agents" / "availability.yaml"
+HEADLESS_PERMISSION_DENIAL_MARKERS = (
+    "headless mode cannot prompt for",
+    "a tool required the \"command\" permission",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -152,15 +162,10 @@ def select_environment(
     if not isinstance(environments, dict):
         raise AgentConfigError("Agent availability config must define an environments mapping")
 
-    environment_name = (
-        requested_environment
-        or os.environ.get("MODEL_FUSION_ENV")
-        or config.get("active_environment")
-    )
-    if not isinstance(environment_name, str) or not environment_name:
-        raise AgentConfigError(
-            "No active environment configured; set active_environment or MODEL_FUSION_ENV"
-        )
+    try:
+        environment_name = resolve_environment_name(config, requested_environment)
+    except ValueError as exc:
+        raise AgentConfigError(str(exc)) from exc
 
     environment = environments.get(environment_name)
     if not isinstance(environment, dict):
@@ -285,6 +290,26 @@ def git_state(workspace: Path) -> str | None:
     return hashlib.sha256(result.stdout).hexdigest()
 
 
+def _as_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def _has_headless_permission_denial(stdout: str, stderr: str) -> bool:
+    combined = f"{stdout}\n{stderr}".casefold()
+    return any(marker in combined for marker in HEADLESS_PERMISSION_DENIAL_MARKERS)
+
+
+def prompt_limit_for_platform(platform_name: str | None = None) -> int:
+    """Return a safe prompt limit for reviewers that receive argv strings."""
+
+    detected = (platform_name or sys.platform).casefold()
+    return WINDOWS_PROMPT_BYTES if detected in {"win32", "windows"} else MAX_PROMPT_BYTES
+
+
 def invoke(
     name: str,
     command: list[str],
@@ -300,6 +325,7 @@ def invoke(
             env=env,
             check=False,
             capture_output=True,
+            stdin=subprocess.DEVNULL,
             text=True,
             encoding="utf-8",
             errors="replace",
@@ -310,8 +336,8 @@ def invoke(
             "status": "timeout",
             "duration_ms": round((time.monotonic() - started) * 1000),
             "error": f"{name} exceeded {timeout_seconds + 30} seconds",
-            "stdout": exc.stdout or "",
-            "stderr": exc.stderr or "",
+            "stdout": _as_text(exc.stdout),
+            "stderr": _as_text(exc.stderr),
         }
     except OSError as exc:
         return {
@@ -321,22 +347,37 @@ def invoke(
         }
 
     duration_ms = round((time.monotonic() - started) * 1000)
-    parsed, parse_error = extract_json(result.stdout)
+    stdout = _as_text(result.stdout)
+    stderr = _as_text(result.stderr)
+    parsed, parse_error = extract_json(stdout)
+    permission_denied = _has_headless_permission_denial(stdout, stderr)
+    schema_issues = schema_warnings(parsed) if parsed is not None else []
+    valid_response = parsed is not None and not permission_denied and not schema_issues
     response: dict[str, Any] = {
-        "status": "ok" if result.returncode == 0 else "error",
+        "status": "ok" if result.returncode == 0 and valid_response else "error",
         "return_code": result.returncode,
         "duration_ms": duration_ms,
-        "stderr": result.stderr.strip(),
+        "stderr": stderr.strip(),
     }
     if parsed is not None:
         response["response"] = parsed
-        warnings = schema_warnings(parsed)
-        if warnings:
-            response["schema_warnings"] = warnings
+        if schema_issues:
+            response["schema_warnings"] = schema_issues
     else:
-        response["raw_response"] = result.stdout.strip()
+        response["raw_response"] = stdout.strip()
         response["parse_error"] = parse_error
-    if result.returncode != 0:
+    if permission_denied:
+        response["error_kind"] = "headless_permission_denied"
+        response["error"] = (
+            f"{name} requested a tool permission that headless mode could not approve"
+        )
+    elif parsed is None:
+        response["error_kind"] = "invalid_reviewer_response"
+        response["error"] = f"{name} did not return the required JSON reviewer response"
+    elif schema_issues:
+        response["error_kind"] = "invalid_reviewer_response"
+        response["error"] = f"{name} returned JSON that violated the reviewer response contract"
+    elif result.returncode != 0:
         response["error"] = f"{name} exited with status {result.returncode}"
     return response
 
@@ -358,9 +399,10 @@ def main() -> int:
         return 2
 
     prompt_bytes = prompt_path.read_bytes()
-    if len(prompt_bytes) > MAX_PROMPT_BYTES:
+    prompt_limit = prompt_limit_for_platform()
+    if len(prompt_bytes) > prompt_limit:
         print(
-            f"Prompt is {len(prompt_bytes)} bytes; maximum is {MAX_PROMPT_BYTES}",
+            f"Prompt is {len(prompt_bytes)} bytes; maximum is {prompt_limit} on this platform",
             file=sys.stderr,
         )
         return 2

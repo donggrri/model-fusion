@@ -11,7 +11,7 @@ Installs into:
 
 - [Pi](https://github.com/earendil-works/pi-coding-agent) (`pi` on `PATH`)
 - For Cursor models: Cursor provider package (installed by the scripts below unless `--skip-cursor`)
-- For `mode=agy`: `agy` on `PATH` (optional)
+- For `mode=agy`: `agy` on `PATH` (optional; Windows also supports `%LOCALAPPDATA%\\agy\\bin\\agy.exe`)
 
 ## Install
 

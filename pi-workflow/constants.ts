@@ -5,12 +5,15 @@ import type { SupportedModelSpec, WorkflowMode } from "./types.js";
 
 export const AGENT_DIR = getAgentDir();
 export const RUNS_DIR = join(AGENT_DIR, "runs");
-export const DEFAULT_AGY_BIN = join(
-	process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"),
-	"agy",
-	"bin",
-	"agy.exe",
-);
+export const DEFAULT_AGY_BIN =
+	process.platform === "win32"
+		? join(
+				process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"),
+				"agy",
+				"bin",
+				"agy.exe",
+			)
+		: "agy";
 
 /** Cap peer findings embedded into round-2 prompts. */
 export const MAX_PEER_EMBED_CHARS = 12_000;

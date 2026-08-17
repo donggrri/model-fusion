@@ -44,7 +44,7 @@ It reports the active environment, available capabilities, resolved command path
 
 ## Environment selection
 
-Use `--environment <name>` for a one-time override or set `MODEL_FUSION_ENV` for the current shell. Otherwise, use `active_environment` from [agents/availability.yaml](../agents/availability.yaml). After changing the environment or agent config, rerun setup before using `$delegate` or `$model-fusion`.
+Use `--environment <name>` for a one-time override or set `MODEL_FUSION_ENV` for the current shell. Otherwise, the runner selects the configured platform mapping (`windows-cursor` on Windows and `linux-cursor` on Linux), falling back to `active_environment` from [agents/availability.yaml](../agents/availability.yaml). After changing the environment or agent config, rerun setup before using `$delegate` or `$model-fusion`.
 
 ## Failure handling
 

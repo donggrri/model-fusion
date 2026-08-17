@@ -1,5 +1,8 @@
 schema_version: 1
 active_environment: "windows-cursor"
+platform_environments:
+  windows: "windows-cursor"
+  linux: "linux-cursor"
 
 environments:
   windows-cursor:
@@ -67,14 +70,84 @@ environments:
           command: "agy"
           args:
             - "--print"
+            - "{prompt}"
             - "--mode"
             - "plan"
             - "--sandbox"
-            - "--disable-slash-commands"
+            - "--dangerously-skip-permissions"
             - "--model"
             - "{model}"
             - "--output-format"
             - "text"
             - "--print-timeout"
             - "{timeout}s"
+
+  linux-cursor:
+    description: "Linux environment with Cursor Agent available"
+    agents:
+      cursor:
+        available: true
+        capabilities:
+          - review
+        model: "cursor-grok-4.6-high"
+        preflight:
+          status:
+            - "cursor-agent"
+            - "status"
+          login:
+            - "cursor-agent"
+            - "login"
+        review:
+          command: "cursor-agent"
+          args:
+            - "-p"
+            - "--mode=ask"
+            - "--sandbox"
+            - "disabled"
+            - "--model"
+            - "{model}"
+            - "--output-format"
+            - "text"
+            - "--workspace"
+            - "{workspace}"
             - "{prompt}"
+      codex-sol:
+        available: true
+        capabilities:
+          - review
+        model: "gpt-5.6-sol"
+        review:
+          command: "codex"
+          args:
+            - "exec"
+            - "--config"
+            - "model_reasoning_effort=\"high\""
+            - "--model"
+            - "{model}"
+            - "--sandbox"
+            - "read-only"
+            - "--cd"
+            - "{workspace}"
+            - "--ephemeral"
+            - "{prompt}"
+
+      agy:
+        available: true
+        capabilities:
+          - review
+        model: "gemini-3.7-flash-high"
+        review:
+          command: "agy"
+          args:
+            - "--print"
+            - "{prompt}"
+            - "--mode"
+            - "plan"
+            - "--sandbox"
+            - "--dangerously-skip-permissions"
+            - "--model"
+            - "{model}"
+            - "--output-format"
+            - "text"
+            - "--print-timeout"
+            - "{timeout}s"

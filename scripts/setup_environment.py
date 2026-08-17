@@ -14,6 +14,11 @@ import subprocess
 import sys
 from typing import Any
 
+try:
+    from environment_selection import resolve_environment_name
+except ImportError:  # pragma: no cover - supports package-style imports in tests
+    from scripts.environment_selection import resolve_environment_name
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "agents" / "availability.yaml"
@@ -120,11 +125,10 @@ def load_config(
     environments = config.get("environments")
     if not isinstance(environments, dict):
         return None, None, ["Agent config must define environments"]
-    environment_name = (
-        requested_environment
-        or os.environ.get("MODEL_FUSION_ENV")
-        or config.get("active_environment")
-    )
+    try:
+        environment_name = resolve_environment_name(config, requested_environment)
+    except ValueError as exc:
+        return None, None, [str(exc)]
     environment = environments.get(environment_name)
     if not isinstance(environment_name, str) or not isinstance(environment, dict):
         available = ", ".join(sorted(str(name) for name in environments))

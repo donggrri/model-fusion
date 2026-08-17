@@ -28,7 +28,7 @@ Use `agents/availability.yaml` in this skill repository as the source of truth. 
 2. The `MODEL_FUSION_ENV` environment variable.
 3. The config's `active_environment`.
 
-For the checked-in `windows-cursor` environment, Cursor is enabled for `review`, `advisor`, and `delegate`; AGY is disabled. Do not invoke AGY merely because the fusion workflow commonly supports it. If a configured command is missing, authentication fails, or no reviewer is available, preserve that status and continue with the Codex baseline and any remaining reviewers.
+The checked-in environments enable Cursor, Codex-Sol, and AGY for read-only review. `agents/availability.yaml` maps Windows to `windows-cursor` and Linux to `linux-cursor`; use `--environment` or `MODEL_FUSION_ENV` to override that selection. AGY print-mode arguments must place `{prompt}` immediately after `--print`; the CLI treats `--print` as a prompt-valued option. AGY runs with its native terminal sandbox and `--dangerously-skip-permissions` because headless mode cannot answer interactive permission prompts; the runner rejects permission-denial notices, invalid JSON, timeouts, and preserves those failures for synthesis. If a configured command is missing, authentication fails, or no reviewer is available, preserve that status and continue with the Codex baseline and any remaining reviewers.
 
 After a fresh clone or environment change, run `$setup` or `scripts/setup_environment.py` before creating a fusion run. Do not proceed on a failed setup report without resolving the relevant configuration or dependency issue.
 
