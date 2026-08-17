@@ -59,9 +59,22 @@ environments:
             - "{prompt}"
 
       agy:
-        available: false
+        available: true
         capabilities:
           - review
-        reason: "AGY is not installed or authenticated in this environment."
+        model: "gemini-3.7-flash-high"
         review:
           command: "agy"
+          args:
+            - "--print"
+            - "--mode"
+            - "plan"
+            - "--sandbox"
+            - "--disable-slash-commands"
+            - "--model"
+            - "{model}"
+            - "--output-format"
+            - "text"
+            - "--print-timeout"
+            - "{timeout}s"
+            - "{prompt}"
